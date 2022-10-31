@@ -1,0 +1,48 @@
+name: Terraform Destroy
+
+on:
+  workflow_dispatch
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+
+env:
+  BUCKET: z-test-assignment
+  TFSTATE_FILE: lambda.tfstate
+  DB_TABLE: z-Test-assignment-table
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          # terraform_version: 1.0.4
+      # - name: Terraform Format
+      #   id: fmt
+      #   run: terraform fmt -check
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - name: terraform init 
+        id: init
+        run: |
+          cd example
+          terraform init -reconfigure -backend-config="bucket=$BUCKET" -backend-config="key=$TFSTATE_FILE" -backend-config="dynamodb_table=$DB_TABLE"
+      
+      - name: Terraform destroy
+        run: |
+          cd example
+          terraform destroy -auto-approve 
+
